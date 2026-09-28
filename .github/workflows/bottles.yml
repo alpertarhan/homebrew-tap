@@ -19,9 +19,14 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: macos-15 # arm64; also used on newer macOS
-          - os: macos-15-intel
+          # Homebrew's bottled platforms (homebrew/core has no Intel macOS bottles for go).
+          # A macOS 15 bottle also serves newer macOS versions.
+          - os: macos-15
           - os: ubuntu-latest
+            container:
+              image: ghcr.io/homebrew/brew:main
+              options: --privileged
+          - os: ubuntu-24.04-arm
             container:
               image: ghcr.io/homebrew/brew:main
               options: --privileged
