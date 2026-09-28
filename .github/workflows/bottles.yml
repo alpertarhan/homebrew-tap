@@ -1,0 +1,105 @@
+# A formula release arrives as a push to bump/<formula>-<version> (agent-mesh's
+# release workflow pushes it with a deploy key). Build and test bottles on every
+# platform, publish them to a GitHub release of this repo with build provenance,
+# then fast-forward main. main never names a version whose bottles are missing.
+name: bottles
+
+on:
+  push:
+    branches: ["bump/**"]
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash -xeuo pipefail {0}
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-15 # arm64; also used on newer macOS
+          - os: macos-15-intel
+          - os: ubuntu-latest
+            container:
+              image: ghcr.io/homebrew/brew:main
+              options: --privileged
+    runs-on: ${{ matrix.os }}
+    container: ${{ fromJSON(toJSON(matrix.container)) }} # zizmor: ignore[unpinned-images]
+    permissions:
+      contents: read
+    steps:
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@848c272c7bfe984a197bd4d16383f4c106ec61e6 # 2026.09.21.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - run: brew test-bot --only-cleanup-before
+      - run: brew test-bot --only-setup
+      - run: brew test-bot --only-tap-syntax
+
+      - name: Build and test bottle
+        run: |
+          release=${GITHUB_REF_NAME#bump/}   # <formula>-<version>
+          formula=${release%-*}
+          brew test-bot --only-formulae \
+            --root-url="https://github.com/$GITHUB_REPOSITORY/releases/download/$release" \
+            "$GITHUB_REPOSITORY_OWNER/tap/$formula"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: bottles_${{ matrix.os }}
+          path: "*.bottle.*"
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      attestations: write
+      contents: write
+      id-token: write
+    steps:
+      - name: Set up Homebrew
+        id: set-up-homebrew
+        uses: Homebrew/actions/setup-homebrew@848c272c7bfe984a197bd4d16383f4c106ec61e6 # 2026.09.21.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up git
+        id: git_setup
+        uses: Homebrew/actions/git-user-config@848c272c7bfe984a197bd4d16383f4c106ec61e6 # 2026.09.21.1
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: bottles_*
+          merge-multiple: true
+          path: bottles
+
+      - name: Upload bottles, commit bottle block
+        working-directory: bottles
+        env:
+          HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_GIT_COMMITTER_NAME: ${{ steps.git_setup.outputs.name }}
+          HOMEBREW_GIT_COMMITTER_EMAIL: ${{ steps.git_setup.outputs.email }}
+          TAP_PATH: ${{ steps.set-up-homebrew.outputs.repository-path }}
+        run: |
+          git -C "$TAP_PATH" checkout -B main "$GITHUB_SHA"
+          brew pr-upload --debug \
+            --root-url="https://github.com/$GITHUB_REPOSITORY/releases/download/${GITHUB_REF_NAME#bump/}"
+
+      - name: Generate build provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: bottles/*.tar.gz
+
+      - name: Publish formula
+        uses: Homebrew/actions/git-try-push@848c272c7bfe984a197bd4d16383f4c106ec61e6 # 2026.09.21.1
+        with:
+          directory: ${{ steps.set-up-homebrew.outputs.repository-path }}
+          branch: main
+
+      - name: Delete bump branch
+        working-directory: ${{ steps.set-up-homebrew.outputs.repository-path }}
+        run: git push origin --delete "$GITHUB_REF_NAME"
