@@ -1,17 +1,10 @@
 class AgentMesh < Formula
   desc "Local messaging between coding agents across harnesses"
   homepage "https://github.com/alpertarhan/agent-mesh"
-  url "https://github.com/alpertarhan/agent-mesh/archive/refs/tags/v0.2.0.tar.gz"
-  sha256 "683d063d6491613b93fe293a9f5b0c3c7f575aeab27c22ad50475f8fbc9b74b1"
+  url "https://github.com/alpertarhan/agent-mesh/archive/refs/tags/v0.3.0.tar.gz"
+  sha256 "b1496438ba80c4e197e84c7a15805444aee556df2145607c9ac3691e6cd823b1"
   license "MIT"
   head "https://github.com/alpertarhan/agent-mesh.git", branch: "main"
-
-  bottle do
-    root_url "https://github.com/alpertarhan/homebrew-tap/releases/download/agent-mesh-0.2.0"
-    sha256 cellar: :any_skip_relocation, arm64_sequoia: "a018c0179226b38393988fb92f577f19f6966fc4e30efd1c49d2dee674e496ff"
-    sha256 cellar: :any_skip_relocation, arm64_linux:   "859003909c28ce07a2beea684f81f7874cabb4b40112f2b29dcda87209d2bbec"
-    sha256 cellar: :any,                 x86_64_linux:  "4520bce3a1900460f294c0ef29dcbdf1afdfb21270907ec8a4c7714c7f513972"
-  end
 
   depends_on "go" => :build
 
