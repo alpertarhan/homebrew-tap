@@ -6,6 +6,13 @@ class AgentMesh < Formula
   license "MIT"
   head "https://github.com/alpertarhan/agent-mesh.git", branch: "main"
 
+  bottle do
+    root_url "https://github.com/alpertarhan/homebrew-tap/releases/download/agent-mesh-0.7.0"
+    sha256 cellar: :any_skip_relocation, arm64_sequoia: "48a30af1479d386e3148284d4d63b6e912d99da9120fe306b67631a91a137baf"
+    sha256 cellar: :any_skip_relocation, arm64_linux:   "32ccdb57d422d4928ff95dc7395cfecf62d94186ef665b601e0e623198129881"
+    sha256 cellar: :any,                 x86_64_linux:  "f2b98f3fc168c231980414b50b03ce4313e926074908dcfec1e690075873812b"
+  end
+
   depends_on "go" => :build
 
   def install
